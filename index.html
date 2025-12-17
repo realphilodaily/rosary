@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>30-Minute Prayer Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a peaceful feel */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400&display=swap');
+        
+        body {
+            font-family: 'Lato', sans-serif;
+        }
+        
+        h1, h2, h3 {
+            font-family: 'Cinzel', serif;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            background-color: black;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Overlay for waiting or interaction */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 20;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            transition: opacity 0.5s ease;
+        }
+
+        .hidden-overlay {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .pulsing-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+        <h1 class="text-3xl md:text-5xl text-amber-100 mb-2">Daily Prayer Sanctuary</h1>
+        <p class="text-slate-400 text-sm md:text-base italic">Gathering together every 30 minutes.</p>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="w-full max-w-4xl bg-slate-800 p-4 md:p-6 rounded-xl shadow-2xl border border-slate-700">
+        
+        <!-- Status Bar -->
+        <div class="flex justify-between items-center mb-4 px-2">
+            <div id="status-indicator" class="flex items-center text-sm font-bold tracking-widest uppercase text-slate-400">
+                <span id="live-dot" class="hidden pulsing-dot"></span>
+                <span id="status-text">Checking schedule...</span>
+            </div>
+            <div class="text-slate-400 text-sm">
+                Current Time: <span id="clock" class="font-mono text-amber-100">--:--:--</span>
+            </div>
+        </div>
+
+        <!-- Video Player Wrapper -->
+        <div class="video-container relative group">
+            
+            <!-- THE VIDEO: Replace the src below with your Rosary video link -->
+            <video id="prayer-video" playsinline preload="auto">
+                <!-- PASTE YOUR ROSARY VIDEO LINK HERE INSTEAD OF THE SAMPLE -->
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+
+            <!-- Overlay: Start / Unmute (Browser Policy Requirement) -->
+            <div id="start-overlay" class="overlay">
+                <h2 class="text-2xl mb-4 text-amber-50">Welcome</h2>
+                <p class="mb-6 text-slate-300 max-w-md">The prayer room is open. Please click below to sync with the current service.</p>
+                <button id="join-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-full transition-all transform hover:scale-105 shadow-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                    </svg>
+                    Join Service
+                </button>
+            </div>
+
+            <!-- Overlay: Waiting for Next Session -->
+            <div id="waiting-overlay" class="overlay hidden-overlay">
+                <h2 class="text-3xl mb-2 text-amber-50">Service Concluded</h2>
+                <p class="text-slate-300 mb-6">The current prayer has ended. The next service begins shortly.</p>
+                
+                <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+                    <p class="text-xs uppercase tracking-widest text-slate-400 mb-2">Next Service Begins In</p>
+                    <div id="countdown" class="text-5xl font-mono text-amber-400 font-bold">00:00</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer / Instructions -->
+        <div class="mt-6 text-center text-slate-500 text-sm">
+            <p>Services start automatically every 30 minutes (e.g. 9:00, 9:30, 10:00).</p>
+            <p class="mt-2 text-xs">If the video pauses, please refresh the page to re-sync.</p>
+        </div>
+
+    </main>
+
+    <script>
+        const video = document.getElementById('prayer-video');
+        const startOverlay = document.getElementById('start-overlay');
+        const waitingOverlay = document.getElementById('waiting-overlay');
+        const joinBtn = document.getElementById('join-btn');
+        const statusText = document.getElementById('status-text');
+        const liveDot = document.getElementById('live-dot');
+        const countdownEl = document.getElementById('countdown');
+        const clockEl = document.getElementById('clock');
+
+        let isUserActive = false;
+        
+        // --- UPDATED LOGIC FOR 30 MINUTE INTERVALS ---
+
+        function updateState() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // 1. Calculate where we are in the hour (0 - 3599 seconds)
+            const totalSecondsInHour = (minutes * 60) + seconds;
+            
+            // 2. Define the cycle length (30 minutes = 1800 seconds)
+            const cycleLength = 1800; 
+
+            // 3. Calculate seconds past the start of the current cycle (e.g., past 9:00 or past 9:30)
+            const secondsIntoCycle = totalSecondsInHour % cycleLength;
+            
+            const duration = video.duration;
+
+            clockEl.textContent = now.toLocaleTimeString([], { hour12: true });
+
+            if (isNaN(duration)) {
+                statusText.innerText = "Loading Service...";
+                return;
+            }
+
+            // CHECK: Are we currently "Live"?
+            // We are live if the time passed in this 30-min block is less than video length
+            if (secondsIntoCycle < duration) {
+                // --- ON AIR ---
+                setLiveState();
+
+                // Sync Check
+                const timeDiff = Math.abs(video.currentTime - secondsIntoCycle);
+                if (timeDiff > 2) {
+                    console.log(`Syncing: Jump to ${secondsIntoCycle}`);
+                    video.currentTime = secondsIntoCycle;
+                }
+
+                if (isUserActive && video.paused) {
+                    video.play().catch(e => console.log("Autoplay blocked:", e));
+                }
+
+            } else {
+                // --- WAITING ---
+                setWaitingState(secondsIntoCycle, cycleLength);
+            }
+        }
+
+        function setLiveState() {
+            waitingOverlay.classList.add('hidden-overlay');
+            waitingOverlay.classList.remove('flex');
+            
+            statusText.innerText = "Live Now";
+            statusText.classList.add('text-red-500');
+            liveDot.classList.remove('hidden');
+
+            if (isUserActive) {
+                startOverlay.classList.add('hidden-overlay');
+                startOverlay.style.pointerEvents = 'none';
+            }
+        }
+
+        function setWaitingState(secondsIntoCycle, cycleLength) {
+            video.pause();
+            
+            // Time remaining until the NEXT 30 minute mark
+            const secondsRemaining = cycleLength - secondsIntoCycle;
+            
+            const m = Math.floor(secondsRemaining / 60);
+            const s = Math.floor(secondsRemaining % 60);
+            
+            countdownEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            
+            statusText.innerText = "Next Service Soon";
+            statusText.classList.remove('text-red-500');
+            liveDot.classList.add('hidden');
+
+            waitingOverlay.classList.remove('hidden-overlay');
+            startOverlay.classList.add('hidden-overlay');
+        }
+
+        // --- EVENTS ---
+
+        joinBtn.addEventListener('click', () => {
+            isUserActive = true;
+            video.play().then(() => {
+                updateState(); 
+            }).catch(err => {
+                console.error("Playback failed", err);
+            });
+            startOverlay.classList.add('hidden-overlay');
+        });
+
+        video.addEventListener('loadedmetadata', () => {
+            console.log("Video loaded. Duration:", video.duration);
+            updateState();
+        });
+
+        setInterval(updateState, 1000);
+        updateState();
+
+    </script>
+</body>
+</html>

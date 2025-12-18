@@ -104,7 +104,7 @@
             
             <!-- THE VIDEO: Replace 'src' with your actual video link -->
             <video id="prayer-video" playsinline preload="auto">
-                <!-- PASTE YOUR VIMEO MP4 LINK HERE -->
+                <!-- YOUR VIMEO MP4 LINK -->
                 <source src="https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
@@ -137,18 +137,9 @@
         <!-- Footer / Instructions -->
         <div class="mt-6 text-center text-slate-500 text-sm">
             <p>Services start automatically at 9:00, 9:30, 10:00... (Every 30 Minutes)</p>
-            <p class="mt-2 text-xs">Using Direct MP4 Mode</p>
         </div>
 
     </main>
-    
-    <!-- Test Controls for Debugging -->
-    <div class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 p-2 flex justify-center gap-2 opacity-90 hover:opacity-100 transition-opacity z-50">
-        <span class="text-xs text-slate-500 self-center mr-2 font-bold uppercase tracking-widest">Admin Testing:</span>
-        <button onclick="simulateStart()" class="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded">Start Service</button>
-        <button onclick="simulateEnd()" class="bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-1 rounded">End Service</button>
-        <button onclick="resetTime()" class="bg-slate-600 hover:bg-slate-500 text-white text-xs px-3 py-1 rounded">Reset</button>
-    </div>
 
     <script>
         // --- CONFIGURATION ---
@@ -163,12 +154,11 @@
 
         let isUserActive = false; // Has user clicked "Join"?
         let hasInitialSynced = false; // Ensures we force-jump at least once
-        let timeOffset = 0; // For testing
 
         // --- CORE LOGIC ---
 
         function updateState() {
-            const now = new Date(new Date().getTime() + timeOffset * 1000);
+            const now = new Date(); // Uses real time
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
             
@@ -191,7 +181,7 @@
                 // --- ON AIR ---
                 setLiveState();
 
-                // 1. Initial Force Sync (The fix for your issue)
+                // 1. Initial Force Sync
                 // If user just joined and video is playing, force the time immediately
                 if (isUserActive && !video.paused && !hasInitialSynced) {
                      console.log(`Initial Sync Force: Jumping to ${secondsIntoCycle}`);
@@ -276,42 +266,6 @@
         // 3. Heartbeat
         setInterval(updateState, 1000);
         updateState();
-
-        // --- TEST FUNCTIONS ---
-        function simulateStart() {
-            // Force time to 5 minutes past the hour (or half hour)
-            const now = new Date();
-            const totalSeconds = (now.getMinutes() * 60) + now.getSeconds();
-            const remainder = totalSeconds % 1800;
-            // Shift time so we are exactly at minute 5 of the service
-            const targetCycleTime = 300; // 5 minutes in
-            timeOffset = targetCycleTime - remainder; 
-            
-            // Reset sync flag to test the "jump"
-            hasInitialSynced = false;
-            
-            updateState();
-            console.log("Simulation: Started at 5 mins in");
-        }
-
-        function simulateEnd() {
-            const now = new Date();
-            const totalSeconds = (now.getMinutes() * 60) + now.getSeconds();
-            const remainder = totalSeconds % 1800;
-            // Shift time to be past video duration
-            // Assume video is short for this logic, or just jump to 29 mins
-            const targetCycleTime = 1750; 
-            timeOffset = targetCycleTime - remainder;
-            updateState();
-            console.log("Simulation: Ended");
-        }
-
-        function resetTime() {
-            timeOffset = 0;
-            hasInitialSynced = false;
-            updateState();
-            console.log("Simulation: Reset");
-        }
 
     </script>
 </body>

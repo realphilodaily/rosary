@@ -3,19 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>30-Minute Prayer Service</title>
+    <title>Daily Prayer TV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom font for a peaceful feel */
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400&display=swap');
         
-        body {
-            font-family: 'Lato', sans-serif;
-        }
-        
-        h1, h2, h3 {
-            font-family: 'Cinzel', serif;
-        }
+        body { font-family: 'Lato', sans-serif; }
+        h1, h2, h3 { font-family: 'Cinzel', serif; }
 
         .video-container {
             position: relative;
@@ -36,8 +30,16 @@
             object-fit: cover;
         }
 
-        /* Overlay for waiting or interaction */
-        .overlay {
+        /* Minimal Overlay for Unmute */
+        .control-layer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 30;
+        }
+
+        /* Waiting Screen */
+        .waiting-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -47,225 +49,196 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(15, 23, 42, 0.95);
-            z-index: 20;
+            background: rgba(10, 10, 10, 0.95);
+            z-index: 40;
             color: white;
             text-align: center;
-            padding: 1rem;
-            transition: opacity 0.5s ease;
         }
 
-        .hidden-overlay {
-            opacity: 0;
-            pointer-events: none;
-        }
+        .hidden { display: none !important; }
 
         .pulsing-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             background-color: #ef4444;
             border-radius: 50%;
             display: inline-block;
-            margin-right: 8px;
+            margin-right: 6px;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Header -->
-    <header class="text-center mb-8">
-        <h1 class="text-3xl md:text-5xl text-amber-100 mb-2">Daily Prayer Sanctuary</h1>
-        <p class="text-slate-400 text-sm md:text-base italic">Gathering together every 30 minutes.</p>
+    <header class="text-center mb-6">
+        <h1 class="text-2xl md:text-4xl text-amber-100">Daily Prayer Sanctuary</h1>
+        <div class="flex justify-center items-center gap-4 text-xs md:text-sm text-slate-500 mt-2">
+            <span id="current-day" class="text-amber-500 font-bold uppercase">Today</span>
+            <span>•</span>
+            <span id="clock" class="font-mono">--:--</span>
+        </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="w-full max-w-4xl bg-slate-800 p-4 md:p-6 rounded-xl shadow-2xl border border-slate-700">
+    <main class="w-full max-w-5xl bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-800 relative">
         
-        <!-- Status Bar -->
-        <div class="flex justify-between items-center mb-4 px-2">
-            <div id="status-indicator" class="flex items-center text-sm font-bold tracking-widest uppercase text-slate-400">
-                <span id="live-dot" class="hidden pulsing-dot"></span>
-                <span id="status-text">Checking schedule...</span>
-            </div>
-            <div class="text-slate-400 text-sm">
-                Current Time: <span id="clock" class="font-mono text-amber-100">--:--:--</span>
-            </div>
-        </div>
-
-        <!-- Video Player Wrapper -->
-        <div class="video-container relative group">
+        <div class="video-container group">
             
-            <!-- THE VIDEO: Replace 'src' with your actual video link -->
-            <video id="prayer-video" playsinline preload="auto">
-                <!-- YOUR VIMEO MP4 LINK -->
-                <source src="https://player.vimeo.com/progressive_redirect/playback/1147768135/rendition/360p/file.mp4%20%28360p%29.mp4?loc=external&signature=3570fc54fb421a130d7be2f5bd0f6cdaa5764111938d56f883f4a551f11124ba">
+            <!-- VIDEO PLAYER -->
+            <!-- We removed the <source> tag here because we inject it via JavaScript based on the day -->
+            <video id="prayer-video" playsinline preload="auto" muted>
                 Your browser does not support the video tag.
             </video>
 
-            <!-- Overlay: Start / Unmute (Browser Policy Requirement) -->
-            <div id="start-overlay" class="overlay">
-                <h2 class="text-2xl mb-4 text-amber-50">Welcome</h2>
-                <p class="mb-6 text-slate-300 max-w-md">The prayer room is open. Please click below to sync with the current service.</p>
-                <button id="join-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-full transition-all transform hover:scale-105 shadow-lg flex items-center gap-2">
+            <!-- UNMUTE BUTTON (Appears if video is playing muted) -->
+            <div id="unmute-controls" class="control-layer hidden">
+                <button id="unmute-btn" class="bg-black/60 hover:bg-amber-700/90 text-white backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 transition-all border border-white/20">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
-                    Join Service
+                    Tap to Unmute
                 </button>
             </div>
 
-            <!-- Overlay: Waiting for Next Hour -->
-            <div id="waiting-overlay" class="overlay hidden-overlay">
-                <h2 class="text-3xl mb-2 text-amber-50">Service Concluded</h2>
-                <p class="text-slate-300 mb-6">The current prayer has ended. The next service begins shortly.</p>
-                
-                <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
-                    <p class="text-xs uppercase tracking-widest text-slate-400 mb-2">Next Service Begins In</p>
-                    <div id="countdown" class="text-5xl font-mono text-amber-400 font-bold">00:00</div>
-                </div>
+            <!-- WAITING SCREEN -->
+            <div id="waiting-screen" class="waiting-screen hidden">
+                <h3 class="text-xl text-slate-400 font-light mb-4">Prayer Concluded</h3>
+                <div class="text-4xl font-mono font-bold text-amber-500" id="countdown">00:00</div>
+                <p class="text-xs text-slate-500 mt-2 uppercase tracking-widest">Next service starts soon</p>
             </div>
 
-        </div>
-
-        <!-- Footer / Instructions -->
-        <div class="mt-6 text-center text-slate-500 text-sm">
-            <p>Services start automatically at 9:00, 9:30, 10:00... (Every 30 Minutes)</p>
         </div>
 
     </main>
 
+    <div id="status-debug" class="mt-4 text-xs text-slate-600 font-mono">Initializing...</div>
+
     <script>
-        // --- CONFIGURATION ---
+        // ==========================================
+        // CONFIGURATION: SETUP YOUR VIDEOS HERE
+        // ==========================================
+        
+        // You can use the SAME link for every day, or different ones.
+        // Use your VIMEO PAID MP4 links here.
+        const DAILY_VIDEOS = {
+            "Sunday":    "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2",
+            "Monday":    "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2",
+            "Tuesday":   "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2",
+            "Wednesday": "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2",
+            "Thursday":  "https://player.vimeo.com/progressive_redirect/playback/1147768135/rendition/360p/file.mp4%20%28360p%29.mp4?loc=external&signature=3570fc54fb421a130d7be2f5bd0f6cdaa5764111938d56f883f4a551f11124ba",
+            "Friday":    "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2",
+            "Saturday":  "https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2"
+        };
+
+        // ==========================================
+        // SYSTEM CODE
+        // ==========================================
+
         const video = document.getElementById('prayer-video');
-        const startOverlay = document.getElementById('start-overlay');
-        const waitingOverlay = document.getElementById('waiting-overlay');
-        const joinBtn = document.getElementById('join-btn');
-        const statusText = document.getElementById('status-text');
-        const liveDot = document.getElementById('live-dot');
+        const waitingScreen = document.getElementById('waiting-screen');
+        const unmuteBtn = document.getElementById('unmute-btn');
+        const unmuteControls = document.getElementById('unmute-controls');
         const countdownEl = document.getElementById('countdown');
+        const debugEl = document.getElementById('status-debug');
+        const currentDayEl = document.getElementById('current-day');
         const clockEl = document.getElementById('clock');
 
-        let isUserActive = false; // Has user clicked "Join"?
-        let hasInitialSynced = false; // Ensures we force-jump at least once
+        // Setup Day and Video Source
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const today = days[new Date().getDay()];
+        currentDayEl.innerText = today;
+        video.src = DAILY_VIDEOS[today];
 
-        // --- CORE LOGIC ---
+        let hasSyncedInitialTime = false;
 
-        function updateState() {
-            const now = new Date(); // Uses real time
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
+        // --- THE ENGINE ---
+
+        function checkSchedule() {
+            const now = new Date();
+            const totalSecondsInHour = (now.getMinutes() * 60) + now.getSeconds();
+            const cycleLength = 1800; // 30 Minutes
             
-            // 30-Minute Cycle Logic
-            const totalSecondsInHour = (minutes * 60) + seconds;
-            const cycleLength = 1800; // 30 minutes
+            // Calculate where we are in the 30-min block
             const secondsIntoCycle = totalSecondsInHour % cycleLength;
             
-            const duration = video.duration;
+            // Update Clock
+            clockEl.innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            clockEl.textContent = now.toLocaleTimeString([], { hour12: true });
-
-            if (isNaN(duration)) {
-                statusText.innerText = "Loading Service...";
+            // Wait for metadata to know video length
+            if (isNaN(video.duration)) {
+                debugEl.innerText = "Loading Video Metadata...";
                 return;
             }
 
-            // CHECK: Is the session active? 
-            if (secondsIntoCycle < duration) {
-                // --- ON AIR ---
-                setLiveState();
-
-                // 1. Initial Force Sync
-                // If user just joined and video is playing, force the time immediately
-                if (isUserActive && !video.paused && !hasInitialSynced) {
-                     console.log(`Initial Sync Force: Jumping to ${secondsIntoCycle}`);
-                     video.currentTime = secondsIntoCycle;
-                     hasInitialSynced = true; // Mark done so we don't stutter
+            // Are we LIVE? (Time is less than video duration)
+            if (secondsIntoCycle < video.duration) {
+                // HIDE waiting screen
+                waitingScreen.classList.add('hidden');
+                
+                // === AGGRESSIVE SYNC LOGIC ===
+                
+                // 1. If paused, try to Autoplay (Muted)
+                if (video.paused) {
+                    video.muted = true; // Crucial for autoplay
+                    video.play().then(() => {
+                        debugEl.innerText = "Autoplaying Muted...";
+                        // Once playing, Show Unmute Button
+                        unmuteControls.classList.remove('hidden');
+                    }).catch(e => {
+                        debugEl.innerText = "Autoplay Blocked (Tap screen)";
+                    });
                 }
 
-                // 2. Regular Drift Check
-                // Only adjust if drift is significant (> 2 seconds)
-                const timeDiff = Math.abs(video.currentTime - secondsIntoCycle);
-                if (timeDiff > 2) {
-                    console.log(`Drift Detected: Jumping to ${secondsIntoCycle}`);
+                // 2. FORCE TIME SYNC (The Fix for the "Start at 0" bug)
+                const drift = Math.abs(video.currentTime - secondsIntoCycle);
+                
+                // If we are more than 2 seconds off, JUMP.
+                if (drift > 2) {
+                    console.log(`Sync Jump: ${video.currentTime} -> ${secondsIntoCycle}`);
                     video.currentTime = secondsIntoCycle;
                 }
 
-                // Ensure playing if user has joined
-                if (isUserActive && video.paused) {
-                    video.play().catch(e => console.log("Autoplay blocked/waiting:", e));
-                }
+                debugEl.innerText = `Live | Offset: ${Math.floor(secondsIntoCycle)}s`;
 
             } else {
-                // --- WAITING ---
-                setWaitingState(secondsIntoCycle, cycleLength);
+                // === WAITING MODE ===
+                waitingScreen.classList.remove('hidden');
+                unmuteControls.classList.add('hidden');
+                
+                if (!video.paused) {
+                    video.pause();
+                }
+
+                // Countdown Logic
+                const secondsRemaining = cycleLength - secondsIntoCycle;
+                const m = Math.floor(secondsRemaining / 60);
+                const s = Math.floor(secondsRemaining % 60);
+                countdownEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                debugEl.innerText = "Waiting for next cycle";
             }
         }
 
-        function setLiveState() {
-            waitingOverlay.classList.add('hidden-overlay');
-            waitingOverlay.classList.remove('flex');
-            
-            statusText.innerText = "Live Now";
-            statusText.classList.add('text-red-500');
-            liveDot.classList.remove('hidden');
-
-            if (isUserActive) {
-                startOverlay.classList.add('hidden-overlay');
-                startOverlay.style.pointerEvents = 'none';
-            }
-        }
-
-        function setWaitingState(secondsIntoCycle, cycleLength) {
-            video.pause();
-            hasInitialSynced = false; // Reset sync so next session jumps correctly
-            
-            const secondsRemaining = cycleLength - secondsIntoCycle;
-            const m = Math.floor(secondsRemaining / 60);
-            const s = Math.floor(secondsRemaining % 60);
-            
-            countdownEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            
-            statusText.innerText = "Next Service Soon";
-            statusText.classList.remove('text-red-500');
-            liveDot.classList.add('hidden');
-
-            waitingOverlay.classList.remove('hidden-overlay');
-            startOverlay.classList.add('hidden-overlay');
-        }
-
-        // --- EVENTS ---
-
-        // 1. User Interaction
-        joinBtn.addEventListener('click', () => {
-            isUserActive = true;
-            hasInitialSynced = false; // Ensure we attempt a fresh sync
-            
-            video.play().then(() => {
-                // Force an immediate update
-                updateState(); 
-            }).catch(err => {
-                console.error("Playback failed", err);
-            });
-
-            startOverlay.classList.add('hidden-overlay');
+        // --- UNMUTE INTERACTION ---
+        unmuteBtn.addEventListener('click', () => {
+            video.muted = false;
+            // When we unmute, we hide the button so it looks clean
+            unmuteControls.classList.add('hidden');
         });
 
-        // 2. Handle Metadata
-        video.addEventListener('loadedmetadata', () => {
-            console.log("Video loaded. Duration:", video.duration);
-            updateState();
-        });
-
-        // 3. Heartbeat
-        setInterval(updateState, 1000);
-        updateState();
+        // --- INITIALIZATION ---
+        
+        // Run check immediately, then every 1 second
+        video.addEventListener('loadedmetadata', checkSchedule);
+        setInterval(checkSchedule, 1000);
+        
+        // Also force a check on page load just in case
+        checkSchedule();
 
     </script>
 </body>

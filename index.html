@@ -47,7 +47,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(15, 23, 42, 0.95);
             z-index: 20;
             color: white;
             text-align: center;
@@ -102,10 +102,10 @@
         <!-- Video Player Wrapper -->
         <div class="video-container relative group">
             
-            <!-- THE VIDEO: Replace the src below with your Rosary video link -->
+            <!-- THE VIDEO: Replace 'src' with your actual video link -->
             <video id="prayer-video" playsinline preload="auto">
-                <!-- PASTE YOUR ROSARY VIDEO LINK HERE INSTEAD OF THE SAMPLE -->
-                <source src="https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2">
+                <!-- PASTE YOUR VIMEO MP4 LINK HERE -->
+                <source src="https://player.vimeo.com/progressive_redirect/playback/1147755063/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&signature=baf4a57baf17ee5e5a6298c3ae2d103ffacdf549115c8e77d142d23ee26732b2" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
 
@@ -121,7 +121,7 @@
                 </button>
             </div>
 
-            <!-- Overlay: Waiting for Next Session -->
+            <!-- Overlay: Waiting for Next Hour -->
             <div id="waiting-overlay" class="overlay hidden-overlay">
                 <h2 class="text-3xl mb-2 text-amber-50">Service Concluded</h2>
                 <p class="text-slate-300 mb-6">The current prayer has ended. The next service begins shortly.</p>
@@ -136,13 +136,22 @@
 
         <!-- Footer / Instructions -->
         <div class="mt-6 text-center text-slate-500 text-sm">
-            <p>Services start automatically every 30 minutes (e.g. 9:00, 9:30, 10:00).</p>
-            <p class="mt-2 text-xs">If the video pauses, please refresh the page to re-sync.</p>
+            <p>Services start automatically at 9:00, 9:30, 10:00... (Every 30 Minutes)</p>
+            <p class="mt-2 text-xs">Using Direct MP4 Mode</p>
         </div>
 
     </main>
+    
+    <!-- Test Controls for Debugging -->
+    <div class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 p-2 flex justify-center gap-2 opacity-90 hover:opacity-100 transition-opacity z-50">
+        <span class="text-xs text-slate-500 self-center mr-2 font-bold uppercase tracking-widest">Admin Testing:</span>
+        <button onclick="simulateStart()" class="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded">Start Service</button>
+        <button onclick="simulateEnd()" class="bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-1 rounded">End Service</button>
+        <button onclick="resetTime()" class="bg-slate-600 hover:bg-slate-500 text-white text-xs px-3 py-1 rounded">Reset</button>
+    </div>
 
     <script>
+        // --- CONFIGURATION ---
         const video = document.getElementById('prayer-video');
         const startOverlay = document.getElementById('start-overlay');
         const waitingOverlay = document.getElementById('waiting-overlay');
@@ -152,22 +161,20 @@
         const countdownEl = document.getElementById('countdown');
         const clockEl = document.getElementById('clock');
 
-        let isUserActive = false;
-        
-        // --- UPDATED LOGIC FOR 30 MINUTE INTERVALS ---
+        let isUserActive = false; // Has user clicked "Join"?
+        let hasInitialSynced = false; // Ensures we force-jump at least once
+        let timeOffset = 0; // For testing
+
+        // --- CORE LOGIC ---
 
         function updateState() {
-            const now = new Date();
+            const now = new Date(new Date().getTime() + timeOffset * 1000);
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
             
-            // 1. Calculate where we are in the hour (0 - 3599 seconds)
+            // 30-Minute Cycle Logic
             const totalSecondsInHour = (minutes * 60) + seconds;
-            
-            // 2. Define the cycle length (30 minutes = 1800 seconds)
-            const cycleLength = 1800; 
-
-            // 3. Calculate seconds past the start of the current cycle (e.g., past 9:00 or past 9:30)
+            const cycleLength = 1800; // 30 minutes
             const secondsIntoCycle = totalSecondsInHour % cycleLength;
             
             const duration = video.duration;
@@ -179,21 +186,30 @@
                 return;
             }
 
-            // CHECK: Are we currently "Live"?
-            // We are live if the time passed in this 30-min block is less than video length
+            // CHECK: Is the session active? 
             if (secondsIntoCycle < duration) {
                 // --- ON AIR ---
                 setLiveState();
 
-                // Sync Check
+                // 1. Initial Force Sync (The fix for your issue)
+                // If user just joined and video is playing, force the time immediately
+                if (isUserActive && !video.paused && !hasInitialSynced) {
+                     console.log(`Initial Sync Force: Jumping to ${secondsIntoCycle}`);
+                     video.currentTime = secondsIntoCycle;
+                     hasInitialSynced = true; // Mark done so we don't stutter
+                }
+
+                // 2. Regular Drift Check
+                // Only adjust if drift is significant (> 2 seconds)
                 const timeDiff = Math.abs(video.currentTime - secondsIntoCycle);
                 if (timeDiff > 2) {
-                    console.log(`Syncing: Jump to ${secondsIntoCycle}`);
+                    console.log(`Drift Detected: Jumping to ${secondsIntoCycle}`);
                     video.currentTime = secondsIntoCycle;
                 }
 
+                // Ensure playing if user has joined
                 if (isUserActive && video.paused) {
-                    video.play().catch(e => console.log("Autoplay blocked:", e));
+                    video.play().catch(e => console.log("Autoplay blocked/waiting:", e));
                 }
 
             } else {
@@ -218,10 +234,9 @@
 
         function setWaitingState(secondsIntoCycle, cycleLength) {
             video.pause();
+            hasInitialSynced = false; // Reset sync so next session jumps correctly
             
-            // Time remaining until the NEXT 30 minute mark
             const secondsRemaining = cycleLength - secondsIntoCycle;
-            
             const m = Math.floor(secondsRemaining / 60);
             const s = Math.floor(secondsRemaining % 60);
             
@@ -237,23 +252,66 @@
 
         // --- EVENTS ---
 
+        // 1. User Interaction
         joinBtn.addEventListener('click', () => {
             isUserActive = true;
+            hasInitialSynced = false; // Ensure we attempt a fresh sync
+            
             video.play().then(() => {
+                // Force an immediate update
                 updateState(); 
             }).catch(err => {
                 console.error("Playback failed", err);
             });
+
             startOverlay.classList.add('hidden-overlay');
         });
 
+        // 2. Handle Metadata
         video.addEventListener('loadedmetadata', () => {
             console.log("Video loaded. Duration:", video.duration);
             updateState();
         });
 
+        // 3. Heartbeat
         setInterval(updateState, 1000);
         updateState();
+
+        // --- TEST FUNCTIONS ---
+        function simulateStart() {
+            // Force time to 5 minutes past the hour (or half hour)
+            const now = new Date();
+            const totalSeconds = (now.getMinutes() * 60) + now.getSeconds();
+            const remainder = totalSeconds % 1800;
+            // Shift time so we are exactly at minute 5 of the service
+            const targetCycleTime = 300; // 5 minutes in
+            timeOffset = targetCycleTime - remainder; 
+            
+            // Reset sync flag to test the "jump"
+            hasInitialSynced = false;
+            
+            updateState();
+            console.log("Simulation: Started at 5 mins in");
+        }
+
+        function simulateEnd() {
+            const now = new Date();
+            const totalSeconds = (now.getMinutes() * 60) + now.getSeconds();
+            const remainder = totalSeconds % 1800;
+            // Shift time to be past video duration
+            // Assume video is short for this logic, or just jump to 29 mins
+            const targetCycleTime = 1750; 
+            timeOffset = targetCycleTime - remainder;
+            updateState();
+            console.log("Simulation: Ended");
+        }
+
+        function resetTime() {
+            timeOffset = 0;
+            hasInitialSynced = false;
+            updateState();
+            console.log("Simulation: Reset");
+        }
 
     </script>
 </body>
